@@ -11,8 +11,9 @@ License: MIT
 import argparse
 import csv
 import json
-import math
+import os
 import sys
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 
@@ -65,11 +66,40 @@ def process_single(args) -> None:
     print(json.dumps(res, indent=2))
 
 
+def _validate_safe_path(path_str: str, must_exist: bool = False) -> Path:
+    """Validate that a file path is safe (no path traversal) and optionally exists."""
+    path = Path(path_str).resolve()
+    if must_exist and not path.exists():
+        raise FileNotFoundError(f"Input file not found: {path_str}")
+    if must_exist and not path.is_file():
+        raise ValueError(f"Path is not a file: {path_str}")
+    # Prevent path traversal - ensure resolved path is within cwd or is absolute
+    try:
+        path.relative_to(Path.cwd().resolve())
+    except ValueError:
+        # Allow absolute paths that don't traverse upward suspiciously
+        normalized = os.path.normpath(path_str)
+        if ".." in normalized.split(os.sep):
+            raise ValueError(f"Path traversal detected in: {path_str}")
+    return path
+
+
 def process_batch(input_csv: str, output_csv: str) -> None:
-    with open(input_csv, mode="r", encoding="utf-8-sig") as f:
+    input_path = _validate_safe_path(input_csv, must_exist=True)
+    output_path = _validate_safe_path(output_csv, must_exist=False)
+
+    if input_path.stat().st_size == 0:
+        raise ValueError(f"Input CSV file is empty: {input_csv}")
+
+    with open(input_path, mode="r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         fieldnames = list(reader.fieldnames or [])
+        if not fieldnames:
+            raise ValueError(f"Input CSV has no headers: {input_csv}")
         rows = list(reader)
+
+    if not rows:
+        raise ValueError(f"Input CSV has headers but no data rows: {input_csv}")
 
     out_fields = fieldnames + ["score", "classification", "clinical_recommendation"]
     out_rows = []
@@ -82,7 +112,10 @@ def process_batch(input_csv: str, output_csv: str) -> None:
         row_dict["clinical_recommendation"] = calc_res["clinical_recommendation"]
         out_rows.append(row_dict)
 
-    with open(output_csv, mode="w", encoding="utf-8", newline="") as f:
+    # Ensure output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, mode="w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=out_fields)
         writer.writeheader()
         writer.writerows(out_rows)

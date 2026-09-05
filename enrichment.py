@@ -309,11 +309,11 @@ class EchocardiographicStrainAnalysisGlsGlpsEngine:
         return res
 
 # =============================================================================
-# 7. CLINICAL RATIONALE
+# 7. CLINICAL RATIONALE (GLS/GLPS Focus)
 # =============================================================================
 @dataclass
-class ClinicalRationaleEngineResult:
-    feature_name: str = "Clinical Rationale"
+class ClinicalRationaleGlsEngineResult:
+    feature_name: str = "Clinical Rationale (GLS/GLPS)"
     status: str = "OPTIMAL"
     score: float = 0.0
     metrics: Dict[str, Any] = field(default_factory=dict)
@@ -321,16 +321,16 @@ class ClinicalRationaleEngineResult:
     recommendations: List[str] = field(default_factory=list)
     timestamp: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
 
-class ClinicalRationaleEngine:
+class ClinicalRationaleGlsEngine:
     """
     Clinical Rationale: GLS and GLPS quantify myocardial deformation post-STEMI, detecting regional and global dysfunction beyond EF. GLS recove
     """
     def __init__(self, threshold: float = 1.0, config: Optional[Dict[str, Any]] = None):
         self.threshold = threshold
         self.config = config or {}
-        self.history: List[ClinicalRationaleEngineResult] = []
+        self.history: List[ClinicalRationaleGlsEngineResult] = []
 
-    def evaluate(self, primary_value: float, secondary_value: float = 0.0, **kwargs) -> ClinicalRationaleEngineResult:
+    def evaluate(self, primary_value: float, secondary_value: float = 0.0, **kwargs) -> ClinicalRationaleGlsEngineResult:
         alerts = []
         recs = []
         status = "OPTIMAL"
@@ -338,17 +338,17 @@ class ClinicalRationaleEngine:
 
         if primary_value > self.threshold * 2:
             status = "CRITICAL_ALERT"
-            alerts.append(f"Clinical Rationale: Primary value {primary_value:.2f} breached critical threshold ({self.threshold * 2:.2f})")
+            alerts.append(f"Clinical Rationale (GLS/GLPS): Primary value {primary_value:.2f} breached critical threshold ({self.threshold * 2:.2f})")
             recs.append("Initiate immediate protocol review and escalate to attending lead.")
         elif primary_value > self.threshold:
             status = "WARNING"
-            alerts.append(f"Clinical Rationale: Value {primary_value:.2f} exceeds baseline threshold ({self.threshold:.2f})")
+            alerts.append(f"Clinical Rationale (GLS/GLPS): Value {primary_value:.2f} exceeds baseline threshold ({self.threshold:.2f})")
             recs.append("Increase monitoring frequency and perform secondary verification.")
         else:
             recs.append("Parameters nominal under standard operating bounds.")
 
-        res = ClinicalRationaleEngineResult(
-            feature_name="Clinical Rationale",
+        res = ClinicalRationaleGlsEngineResult(
+            feature_name="Clinical Rationale (GLS/GLPS)",
             status=status,
             score=score,
             metrics={"primary": primary_value, "secondary": secondary_value, **kwargs},
@@ -359,11 +359,11 @@ class ClinicalRationaleEngine:
         return res
 
 # =============================================================================
-# 8. IMPLEMENTATION PLAN
+# 8. IMPLEMENTATION PLAN (Strain Analysis Focus)
 # =============================================================================
 @dataclass
-class ImplementationPlanEngineResult:
-    feature_name: str = "Implementation Plan"
+class ImplementationPlanStrainEngineResult:
+    feature_name: str = "Implementation Plan (Strain Analysis)"
     status: str = "OPTIMAL"
     score: float = 0.0
     metrics: Dict[str, Any] = field(default_factory=dict)
@@ -371,16 +371,16 @@ class ImplementationPlanEngineResult:
     recommendations: List[str] = field(default_factory=list)
     timestamp: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
 
-class ImplementationPlanEngine:
+class ImplementationPlanStrainEngine:
     """
     Implementation Plan: - **Regional Strain**: 17-segment model mapping strain to coronary territories (LAD, LCx, RCA)
     """
     def __init__(self, threshold: float = 1.0, config: Optional[Dict[str, Any]] = None):
         self.threshold = threshold
         self.config = config or {}
-        self.history: List[ImplementationPlanEngineResult] = []
+        self.history: List[ImplementationPlanStrainEngineResult] = []
 
-    def evaluate(self, primary_value: float, secondary_value: float = 0.0, **kwargs) -> ImplementationPlanEngineResult:
+    def evaluate(self, primary_value: float, secondary_value: float = 0.0, **kwargs) -> ImplementationPlanStrainEngineResult:
         alerts = []
         recs = []
         status = "OPTIMAL"
@@ -388,17 +388,17 @@ class ImplementationPlanEngine:
 
         if primary_value > self.threshold * 2:
             status = "CRITICAL_ALERT"
-            alerts.append(f"Implementation Plan: Primary value {primary_value:.2f} breached critical threshold ({self.threshold * 2:.2f})")
+            alerts.append(f"Implementation Plan (Strain Analysis): Primary value {primary_value:.2f} breached critical threshold ({self.threshold * 2:.2f})")
             recs.append("Initiate immediate protocol review and escalate to attending lead.")
         elif primary_value > self.threshold:
             status = "WARNING"
-            alerts.append(f"Implementation Plan: Value {primary_value:.2f} exceeds baseline threshold ({self.threshold:.2f})")
+            alerts.append(f"Implementation Plan (Strain Analysis): Value {primary_value:.2f} exceeds baseline threshold ({self.threshold:.2f})")
             recs.append("Increase monitoring frequency and perform secondary verification.")
         else:
             recs.append("Parameters nominal under standard operating bounds.")
 
-        res = ImplementationPlanEngineResult(
-            feature_name="Implementation Plan",
+        res = ImplementationPlanStrainEngineResult(
+            feature_name="Implementation Plan (Strain Analysis)",
             status=status,
             score=score,
             metrics={"primary": primary_value, "secondary": secondary_value, **kwargs},
@@ -420,8 +420,8 @@ class TimistemiriskscoreEnrichmentSuite:
         self.filestocreatemodifye = FilesToCreatemodifyEngine()
         self.acceptancecriteriaen = AcceptanceCriteriaEngine()
         self.echocardiographicstr = EchocardiographicStrainAnalysisGlsGlpsEngine()
-        self.clinicalrationaleeng = ClinicalRationaleEngine()
-        self.implementationplanen = ImplementationPlanEngine()
+        self.clinicalrationalegls = ClinicalRationaleGlsEngine()
+        self.implementationplanstrain = ImplementationPlanStrainEngine()
 
     def execute_all(self, primary_val: float = 1.5, secondary_val: float = 0.5) -> Dict[str, Any]:
         results = {}
@@ -431,8 +431,8 @@ class TimistemiriskscoreEnrichmentSuite:
         results["FilesToCreatemodifyEngine"] = self.filestocreatemodifye.evaluate(primary_val, secondary_val)
         results["AcceptanceCriteriaEngine"] = self.acceptancecriteriaen.evaluate(primary_val, secondary_val)
         results["EchocardiographicStrainAnalysisGlsGlpsEngine"] = self.echocardiographicstr.evaluate(primary_val, secondary_val)
-        results["ClinicalRationaleEngine"] = self.clinicalrationaleeng.evaluate(primary_val, secondary_val)
-        results["ImplementationPlanEngine"] = self.implementationplanen.evaluate(primary_val, secondary_val)
+        results["ClinicalRationaleGlsEngine"] = self.clinicalrationalegls.evaluate(primary_val, secondary_val)
+        results["ImplementationPlanStrainEngine"] = self.implementationplanstrain.evaluate(primary_val, secondary_val)
         return results
 
 # Global instance

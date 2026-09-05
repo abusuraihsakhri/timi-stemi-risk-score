@@ -13,8 +13,8 @@ from enrichment import (
     FilesToCreatemodifyEngine,
     AcceptanceCriteriaEngine,
     EchocardiographicStrainAnalysisGlsGlpsEngine,
-    ClinicalRationaleEngine,
-    ImplementationPlanEngine,
+    ClinicalRationaleGlsEngine,
+    ImplementationPlanStrainEngine,
     TimistemiriskscoreEnrichmentSuite,
     enrichment_suite,
 )
