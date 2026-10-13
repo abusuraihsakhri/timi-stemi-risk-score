@@ -14,8 +14,8 @@ supervisor = SystemSupervisor(model_provider="mock")
 
 app = FastAPI(
     title="Timi Stemi Risk Score API",
-    description="Enterprise Distributed Component Platform (Clinical & Biomedical AI)",
-    version="3.0.0-ENTERPRISE",
+    description="TIMI STEMI clinical score and separate legacy experimental audit endpoints",
+    version="4.0.0",
 )
 
 
@@ -42,7 +42,7 @@ def api_timi_stemi(payload: TimiStemiRequest):
 
 @app.get("/health")
 def health():
-    return {"status": "HEALTHY", "service": "timi-stemi-risk-score", "domain": "Clinical & Biomedical AI", "standard": "CAP / CLSI / ISO Standards", "version": "3.0.0-ENTERPRISE"}
+    return {"status": "HEALTHY", "service": "timi-stemi-risk-score", "scoring_reference": "Morrow et al., Circulation 2000", "version": "4.0.0"}
 
 
 @app.get("/metrics")
