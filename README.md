@@ -1,214 +1,89 @@
-# TIMI STEMI Risk Score
+# TIMI Risk Score for STEMI
 
-> **Domain:** Cardiovascular Medicine & Hemodynamic Analytics
-> **Reference Guidelines & Standards:** AHA/ACC Practice Guidelines & ESC Clinical Standards
+A reproducible implementation of the **original TIMI STEMI presentation-time score**. It calculates 0–14 points from eight clinical predictors and displays the 30-day **all-cause mortality observed in the original InTIME II derivation cohort**.
 
-<div align="center">
+> **Clinical limitation:** This is a historical population-level prognostic estimate, not a treatment threshold, diagnostic test, or individually calibrated mortality probability. Reperfusion-era and population differences affect calibration. Do not use it to delay emergency STEMI evaluation or reperfusion.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/Tests-23%20Passed-brightgreen.svg)
+## Application
 
-</div>
+The standalone browser calculator is in [web/index.html](web/index.html). It uses ordinary JavaScript: no Python runtime, account, external API, or transmission of entered patient data is required. The GitHub Pages workflow publishes static files from the web directory; consult repository **Actions → Deploy clinical calculator to GitHub Pages** for deployment status.
 
----
+## Variables (original TIMI STEMI score)
 
-## 📖 What It Does
+| Variable | Points |
+| --- | ---: |
+| Age 65–74 years | 2 |
+| Age ≥75 years (instead of 65–74) | 3 |
+| Any history of diabetes, hypertension, or angina | 1 |
+| Systolic BP <100 mm Hg | 3 |
+| Heart rate >100 beats/min | 2 |
+| Killip class II–IV | 2 |
+| Weight <67 kg | 1 |
+| Anterior ST elevation or LBBB | 1 |
+| Time to treatment >4 hours | 1 |
 
-TIMI Risk Score for STEMI calculates 30-day mortality risk in ST-elevation myocardial infarction patients from clinical variables. The system provides:
+**30-day all-cause mortality (original cohort):**
 
-- **Single-case evaluation** with clinical classification and recommendations
-- **Batch CSV processing** for high-throughput analysis
-- **REST API** via FastAPI for integration with clinical systems
-- **Multi-agent consensus** with specialized workers for QC, safety, and protocol conformance
+| Points | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9–14 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Mortality (%) | 0.8 | 1.6 | 2.2 | 4.4 | 7.3 | 12.4 | 16.1 | 23.4 | 26.8 | 35.9 |
 
-Author: Dr. Abu Suraih Sakhri
-License: MIT
+These are the **STEMI** predictors, not the different TIMI score for unstable angina/NSTEMI. All eight fields are mandatory. Exactly 100 mm Hg, 100 bpm, 67 kg, and 4 hours do **not** meet their strict thresholds.
 
----
+## Use with Python
 
-## 🚀 Installation
+Requires Python 3.10+. The scoring module itself uses only Python's standard library.
 
-```bash
-# Clone the repository
-git clone https://github.com/abusuraihsakhri/timi-stemi-risk-score.git
-cd timi-stemi-risk-score
+~~~bash
+python timi_stemi.py single --age 75 --sbp 90 --heart-rate 110 --killip 2 --weight 60 --time-to-treatment 5 --dm-htn-angina --anterior-or-lbbb
+python timi_stemi.py batch --input sample.csv --output results.csv
+~~~
 
-# Create virtual environment (recommended)
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+Single-case output contains the score, maximum score, 30-day mortality estimate, point breakdown and clinical context; the maximum-risk example above scores **14**.
 
-# Install dependencies
-pip install -r requirements.txt
-```
+CSV input requires these exact column names:
 
----
+~~~text
+age,diabetes_hypertension_angina,systolic_bp,heart_rate,killip_class,weight_kg,anterior_st_elevation_or_lbbb,time_to_treatment_hours
+~~~
 
-## 💻 Usage
+Boolean fields accept yes/no, true/false or 1/0 (case-insensitive). Additional identifiers remain in output. Invalid rows produce errors instead of silently defaulting predictors. Use de-identified data only.
 
-### 1. Single Case Evaluation
+## API and optional legacy tools
 
-```bash
-python timi_stemi.py single --v1 12.0 --v2 4.0 --v3 2.0
-```
-
-Output:
-```json
-{
-  "tool": "timi-stemi-risk-score",
-  "score": 14.0,
-  "classification": "Moderate / Intermediate",
-  "clinical_recommendation": "Close observation or secondary evaluation",
-  "inputs_evaluated": 3
-}
-```
-
-### 2. Batch CSV Processing
-
-```bash
-python timi_stemi.py batch -i input.csv -o results.csv
-```
-
-Input CSV format:
-```csv
-Patient_ID,v1,v2,v3
-Pat_001,15.0,3.0,1.0
-Pat_002,5.0,1.0,0.5
-```
-
-### 3. Enterprise Supervisor CLI
-
-```bash
-# Set audit key (required)
-set AUDIT_SECRET_KEY=your-secure-min-16-char-key-here
-
-# Run single audit task
-python cli.py audit --task-id TASK-001 --target KEY-01 --primary 28.5 --secondary 14.2
-
-# Batch processing
-python cli.py batch -i input.csv -o results.csv
-
-# Verify audit integrity
-python cli.py verify-audit
-
-# Start API server
+~~~bash
+python -m pip install -r requirements.txt
 python cli.py serve --host 127.0.0.1 --port 8000
-```
+~~~
 
-### 4. Python API
+Open http://127.0.0.1:8000/ for the browser calculator or POST eight variables as a JSON object to /api/timi-stemi. Interactive API documentation is at /docs; current OpenAPI is at /openapi.json.
 
-```python
-from timi_stemi import calculate_metrics
+Older, **separate** experimental operations modules remain in the agents package, enrichment.py, simulator.py and cli.py for compatibility. Their generic audit thresholds, simulated language-model responses and enrichment outputs are **not** clinically validated TIMI STEMI calculations. Do not use /api/audit or those modules to assess patient prognosis.
 
-result = calculate_metrics(v1=12.0, v2=4.0)
-print(result["score"])           # 14.0
-print(result["classification"]) # "Moderate / Intermediate"
-```
+For legacy audit functionality, set a strong unique AUDIT_SECRET_KEY environment variable (at least 16 characters) before running audit commands or the Docker service. The HMAC trail is process-local, not a persistent clinical audit system. Do not expose legacy endpoints publicly without authentication and privacy/security review.
 
----
+## Development and tests
 
-## 📐 Classification Tiers
+~~~bash
+python -m pip install -r requirements.txt
+python -m pytest -q
+node --test web/score.test.js
+node --check web/score.js
+~~~
 
-| Score Range | Classification | Recommendation |
-|:------------|:---------------|:---------------|
-| < 10.0 | Low / Standard | Standard monitoring or negative cutoff |
-| 10.0 - 24.99 | Moderate / Intermediate | Close observation or secondary evaluation |
-| >= 25.0 | High / Severe | Urgent clinical intervention |
+Node.js is required only for JavaScript unit tests, not for using the calculator. Python tests cover clinical thresholds, mortality lookup, invalid inputs, CSV processing, API scoring and legacy audit components. CI checks Python 3.10–3.13 and Node.js 22. For a local Docker API:
 
----
+~~~bash
+export AUDIT_SECRET_KEY='generate-a-unique-random-secret-here'
+docker compose up --build
+~~~
 
-## 🛡️ Security Architecture
+The sample Compose service publishes port 8000; restrict it to trusted networks. Never commit actual patient data or runtime secrets. The static calculator does not store clinical entries in browser storage. It needs a JavaScript-module-capable browser (recent Chrome, Firefox, Edge, or Safari) and works on a static host, including GitHub Pages.
 
-### Zero-PHI Outbound Guard
-Active pattern detection and blocking of:
-- Medical Record Numbers (MRN)
-- Social Security Numbers (SSN)
-- Phone numbers and email addresses
-- Patient names (e.g., "John Doe")
-- Date of birth patterns
+## Reference
 
-### HMAC-SHA256 Audit Trail
-- **Requires** `AUDIT_SECRET_KEY` environment variable (minimum 16 characters)
-- Cryptographic chaining of all audit entries
-- Tamper-evident integrity verification
-- No hardcoded secrets
+Morrow DA, Antman EM, Charlesworth A, et al. TIMI risk score for ST-elevation myocardial infarction: a convenient, bedside, clinical score for risk assessment at presentation. *Circulation.* 2000;102:2031–2037. [doi:10.1161/01.CIR.102.17.2031](https://doi.org/10.1161/01.CIR.102.17.2031). See also the [TIMI Study Group calculator](https://timi.org/timi-risk-score-calculator-for-stemi/).
 
-### Path Traversal Protection
-All file operations validate paths to prevent directory traversal attacks.
+## License
 
----
-
-## 🧪 Testing
-
-```bash
-# Run full test suite (23 tests)
-pytest -v
-
-# Run with coverage
-pytest --cov=agents --cov=timi_stemi --cov-report=html
-
-# Run specific test file
-pytest test_timi_stemi.py -v
-pytest tests/test_timi_stemi_risk_score.py -v
-pytest tests/test_enrichment.py -v
-```
-
----
-
-## 🐳 Docker Deployment
-
-```bash
-docker build -t timi-stemi-risk-score .
-docker run -p 8000:8000 -e AUDIT_SECRET_KEY=your-secret-key timi-stemi-risk-score
-```
-
----
-
-## 📁 Project Structure
-
-```
-timi-stemi-risk-score/
-├── agents/                  # Enterprise multi-agent system
-│   ├── __init__.py          # Package initialization
-│   ├── api.py               # FastAPI REST endpoints
-│   ├── base.py              # Security guards, audit trail, PHI protection
-│   ├── learning.py          # Bayesian calibration engine
-│   ├── llm_factory.py       # LLM provider factory
-│   ├── metrics.py           # Prometheus metrics collector
-│   ├── models.py            # Pydantic data models
-│   ├── streamer.py          # WebSocket telemetry
-│   ├── supervisor.py        # Orchestrator coordinator
-│   └── workers.py           # Specialized analysis workers
-├── tests/                   # Test suite
-│   ├── test_enrichment.py
-│   └── test_timi_stemi_risk_score.py
-├── test_timi_stemi.py       # Core module tests
-├── timi_stemi.py            # Core TIMI STEMI calculation engine
-├── cli.py                   # Enterprise CLI
-├── enrichment.py            # Extended feature engines
-├── simulator.py             # High-throughput stress testing
-├── conftest.py              # Pytest configuration
-├── requirements.txt         # Python dependencies
-├── Dockerfile               # Container definition
-└── docker-compose.yml       # Multi-service orchestration
-```
-
----
-
-## 🔧 Dependencies
-
-- Python 3.10+
-- FastAPI >= 0.111.0
-- Pydantic >= 2.5.0
-- uvicorn >= 0.30.0
-- pytest >= 8.0.0
-
----
-
-## 📝 Environment Variables
-
-| Variable | Required | Description |
-|:---------|:---------|:------------|
-| `AUDIT_SECRET_KEY` | Yes | HMAC-SHA256 key for audit trail (min 16 chars) |
+[MIT](LICENSE).

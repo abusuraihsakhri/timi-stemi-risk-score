@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Timi Stemi Risk Score API",
-    "description": "Enterprise Distributed Component Platform (Clinical & Cryptographic AI) adhering to CAP / CLSI / NIST Standards.",
-    "version": "3.0.0-ENTERPRISE",
+    "description": "Original TIMI STEMI clinical scoring endpoint and separate experimental audit endpoints.",
+    "version": "4.0.0",
     "contact": {
       "name": "Dr. Abu Suraih Sakhri",
       "url": "https://github.com/abusuraihsakhri"
@@ -22,17 +22,17 @@
     },
     "/metrics": {
       "get": {
-        "summary": "Prometheus operational metrics",
+        "summary": "Legacy experimental operations counters",
         "responses": {
           "200": {
-            "description": "Prometheus text metrics"
+            "description": "JSON counters, not Prometheus text"
           }
         }
       }
     },
     "/api/audit": {
       "post": {
-        "summary": "Dispatch task payload across specialized workers",
+        "summary": "Experimental generic audit processing (not TIMI STEMI scoring)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -107,6 +107,78 @@
         "responses": {
           "200": {
             "description": "Cryptographic audit trail"
+          }
+        }
+      }
+    },
+    "/api/timi-stemi": {
+      "post": {
+        "summary": "Calculate original TIMI STEMI presentation-time score",
+        "description": "Returns 0–14 points and historical 30-day all-cause mortality (InTIME II derivation cohort). Not a treatment rule.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "age": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120
+                  },
+                  "diabetes_hypertension_angina": {
+                    "type": "boolean"
+                  },
+                  "systolic_bp": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 400
+                  },
+                  "heart_rate": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 350
+                  },
+                  "killip_class": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4
+                  },
+                  "weight_kg": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 500
+                  },
+                  "anterior_st_elevation_or_lbbb": {
+                    "type": "boolean"
+                  },
+                  "time_to_treatment_hours": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                },
+                "required": [
+                  "age",
+                  "diabetes_hypertension_angina",
+                  "systolic_bp",
+                  "heart_rate",
+                  "killip_class",
+                  "weight_kg",
+                  "anterior_st_elevation_or_lbbb",
+                  "time_to_treatment_hours"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Risk score, point breakdown and original-cohort mortality estimate"
+          },
+          "422": {
+            "description": "Validation error"
           }
         }
       }

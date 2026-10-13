@@ -1,236 +1,189 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timi Stemi Risk Score — Operations Console</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #090d16;
-            --card: #111827;
-            --border: #1f293d;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.25);
-            --text: #f3f4f6;
-            --text-muted: #9ca3af;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 2rem;
-            min-height: 100vh;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .header-title h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-        .header-title p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
-        .badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            background: var(--accent-glow);
-            color: var(--accent);
-            border: 1px solid var(--accent);
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 1.5rem;
-        }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .card h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-        input, select, textarea {
-            width: 100%;
-            padding: 0.65rem 0.9rem;
-            background: #0d1322;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: #fff;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
-        input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-        .btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 0.7rem 1.4rem;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            width: 100%;
-        }
-        .btn:hover { background: #2563eb; }
-        .terminal {
-            background: #060911;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: #10b981;
-            height: 380px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .metrics-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .metric-box {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-        }
-        .metric-val { font-size: 1.4rem; font-weight: 700; color: #fff; margin-top: 0.25rem; }
-        .metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="TIMI STEMI presentation risk score: eight clinical inputs, 0–14 points, and historical 30-day mortality estimates.">
+  <title>TIMI STEMI Risk Score — 30-Day Mortality</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: #f3f6fb; color: #18283c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; line-height: 1.5; }
+    main { max-width: 1050px; margin: auto; padding: 2rem 1rem 3rem; }
+    header { margin-bottom: 1.5rem; }
+    h1 { margin: 0 0 .35rem; font-size: clamp(1.6rem, 3.5vw, 2.3rem); letter-spacing: -.03em; }
+    header p, .subtle { color: #495b70; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 1.25rem; align-items: start; }
+    .panel { border: 1px solid #d5e0eb; border-radius: 14px; background: white; padding: 1.4rem; box-shadow: 0 2px 9px #1734520a; }
+    h2 { margin: 0 0 1rem; font-size: 1.15rem; }
+    .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    label { display: block; font-weight: 600; font-size: .92rem; margin-bottom: .3rem; }
+    .hint { font-size: .78rem; font-weight: 400; color: #50637a; }
+    input, select { width: 100%; border: 1px solid #aabacb; border-radius: 7px; padding: .65rem; font: inherit; color: #15253a; background: #fff; }
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid #5f9ee8; outline-offset: 2px; }
+    .wide { grid-column: 1 / -1; }
+    .buttons { display: flex; gap: .7rem; margin-top: 1.4rem; }
+    button { padding: .75rem 1.1rem; border-radius: 8px; border: 1px solid #1753a0; background: #185bb3; color: white; font: inherit; font-weight: 650; cursor: pointer; }
+    button.secondary { background: white; color: #1853a0; }
+    button:hover { filter: brightness(.94); }
+    .outcome { text-align: center; border: 1px solid #d5e0eb; background: #f6f9ff; border-radius: 12px; padding: 1rem; margin: .5rem 0 1.2rem; }
+    .number { font-weight: 750; color: #164d91; font-size: 2.7rem; line-height: 1.2; }
+    .label { color: #364a63; font-size: .87rem; }
+    dl { margin: 0; }
+    dl > div { display: flex; justify-content: space-between; gap: .5rem; border-bottom: 1px solid #e7edf4; padding: .45rem 0; font-size: .9rem; }
+    dt { color: #46566b; }
+    dd { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; }
+    .error { color: #a0212d; font-weight: 600; }
+    .notice { padding: .85rem 1rem; border-left: 4px solid #bc8017; background: #fff9ea; border-radius: 4px; font-size: .86rem; }
+    .note { margin-top: 1.1rem; font-size: .84rem; }
+    footer { border-top: 1px solid #d5e0eb; margin-top: 2rem; padding-top: 1rem; font-size: .84rem; color: #4d6076; }
+    a { color: #134f9d; }
+    @media(max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+    @media(max-width: 500px) { main { padding: 1.3rem .8rem; } .fields { grid-template-columns: 1fr; } .panel { padding: 1rem; } }
+  </style>
 </head>
 <body>
+  <main>
+    <header>
+      <h1>TIMI Risk Score for STEMI</h1>
+      <p>Presentation-time prognostic score · 0–14 points · historical 30-day all-cause mortality</p>
+    </header>
+    <div class="layout">
+      <section class="panel" aria-labelledby="inputs-title">
+        <h2 id="inputs-title">Clinical predictors</h2>
+        <form id="score-form">
+          <div class="fields">
+            <div>
+              <label for="age">Age (years)</label>
+              <input id="age" name="age" type="number" min="0" max="120" step="1" required value="60">
+            </div>
+            <div>
+              <label for="systolic_bp">Systolic blood pressure <span class="hint">(mm Hg)</span></label>
+              <input id="systolic_bp" name="systolic_bp" type="number" min="1" max="400" step="any" required value="120">
+            </div>
+            <div>
+              <label for="heart_rate">Heart rate <span class="hint">(beats/min)</span></label>
+              <input id="heart_rate" name="heart_rate" type="number" min="1" max="350" step="any" required value="80">
+            </div>
+            <div>
+              <label for="killip_class">Killip class</label>
+              <select id="killip_class" name="killip_class" required>
+                <option value="1">I</option>
+                <option value="2">II</option>
+                <option value="3">III</option>
+                <option value="4">IV</option>
+              </select>
+            </div>
+            <div>
+              <label for="weight_kg">Weight <span class="hint">(kg)</span></label>
+              <input id="weight_kg" name="weight_kg" type="number" min="1" max="500" step="any" required value="80">
+            </div>
+            <div>
+              <label for="time_to_treatment_hours">Time to treatment <span class="hint">(hours)</span></label>
+              <input id="time_to_treatment_hours" name="time_to_treatment_hours" type="number" min="0" max="1000" step="any" required value="2">
+            </div>
+            <div class="wide">
+              <label for="diabetes_hypertension_angina">History of diabetes, hypertension, or angina?</label>
+              <select id="diabetes_hypertension_angina" name="diabetes_hypertension_angina" required>
+                <option value="false">No</option>
+                <option value="true">Yes — any one or more</option>
+              </select>
+            </div>
+            <div class="wide">
+              <label for="anterior_st_elevation_or_lbbb">Anterior ST elevation or left bundle branch block (LBBB)?</label>
+              <select id="anterior_st_elevation_or_lbbb" name="anterior_st_elevation_or_lbbb" required>
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </div>
+          </div>
+          <div class="buttons">
+            <button type="submit">Calculate score</button>
+            <button type="reset" class="secondary">Reset</button>
+          </div>
+        </form>
+      </section>
 
-    <div class="header">
-        <div class="header-title">
-            <h1>Timi Stemi Risk Score</h1>
-            <p>Domain: Clinical & Cryptographic AI | Standard: CAP / CLSI / NIST Standards | LabMind-Atlas Architecture</p>
+      <section class="panel" aria-labelledby="result-title">
+        <h2 id="result-title">Result</h2>
+        <p id="status" role="status" aria-live="polite" class="subtle">Calculate using the values on the left.</p>
+        <div id="results" hidden>
+          <div class="outcome">
+            <div class="label">TIMI STEMI score</div>
+            <div id="score" class="number">—</div>
+            <div class="label">of 14 possible points</div>
+          </div>
+          <div class="outcome">
+            <div class="label">Observed 30-day mortality in derivation cohort</div>
+            <div id="mortality" class="number">—</div>
+          </div>
+          <h2>Point breakdown</h2>
+          <dl id="breakdown"></dl>
         </div>
-        <div>
-            <span class="badge">Air-Gapped Active</span>
-            <span class="badge" style="background: rgba(16,185,129,0.2); color: #10b981; border-color: #10b981;">Zero-PHI Guard Active</span>
-        </div>
+        <p class="notice">This historical score estimates population-level risk; it does not diagnose STEMI, replace clinical judgment, or direct reperfusion or other treatment. Estimates were derived primarily in the fibrinolysis era and may not be calibrated to current care or individual populations.</p>
+        <p class="note">Calculations run locally in your browser. Entered clinical values are not sent to a server; only static page assets are downloaded.</p>
+      </section>
     </div>
-
-    <div class="metrics-bar">
-        <div class="metric-box">
-            <div class="metric-label">System Status</div>
-            <div class="metric-val" style="color: var(--success);" id="m-status">OPTIMAL</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Tasks Processed</div>
-            <div class="metric-val" id="m-tasks">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Audit Blocks Signed</div>
-            <div class="metric-val" id="m-audit">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">PHI Interceptions</div>
-            <div class="metric-val" style="color: var(--accent);" id="m-phi">0</div>
-        </div>
-    </div>
-
-    <div class="grid">
-        <div class="card">
-            <h2>⚙️ Dispatch Distributed Component Audit</h2>
-            <div class="form-group">
-                <label>Task / Sample ID</label>
-                <input type="text" id="task_id" value="TASK-2026-LIVE-01">
-            </div>
-            <div class="form-group">
-                <label>Target Identifier</label>
-                <input type="text" id="target_id" value="SPECIMEN-ALPHA-77">
-            </div>
-            <div class="form-group">
-                <label>Primary Measurement / Value</label>
-                <input type="number" id="primary_metric" value="29.4" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Secondary Metric / Kinetic Index</label>
-                <input type="number" id="secondary_metric" value="14.8" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Status / Phenotype Descriptor</label>
-                <input type="text" id="status_descriptor" value="DISCORDANT_ANOMALY">
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="is_critical" checked> Trigger Emergency / Critical Flag</label>
-            </div>
-            <button class="btn" onclick="runAudit()">Execute Distributed Component Audit</button>
-        </div>
-
-        <div class="card">
-            <h2>📊 Real-Time Consensus Dossier & Audit Log</h2>
-            <div class="terminal" id="outputConsole">// Timi Stemi Risk Score Operations Console Ready
-// Connection established with Air-Gapped Supervisor
-// Cryptographic HMAC-SHA256 audit ledger loaded.
-// Ready for live task payload dispatch...</div>
-        </div>
-    </div>
-
-    <script>
-        async function runAudit() {
-            const consoleEl = document.getElementById('outputConsole');
-            consoleEl.innerText = "// Dispatching task across specialized workers...
-// Invoking InvariantQCWorker, SafetyEscalationWorker, ProtocolWorker...";
-
-            const payload = {
-                task_id: document.getElementById('task_id').value,
-                target_identifier: document.getElementById('target_id').value,
-                primary_metric: parseFloat(document.getElementById('primary_metric').value),
-                secondary_metric: parseFloat(document.getElementById('secondary_metric').value),
-                status_descriptor: document.getElementById('status_descriptor').value,
-                is_critical_flag: document.getElementById('is_critical').checked
-            };
-
-            try {
-                const res = await fetch('/api/audit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                consoleEl.innerText = JSON.stringify(data, null, 2);
-                document.getElementById('m-tasks').innerText = parseInt(document.getElementById('m-tasks').innerText) + 1;
-                document.getElementById('m-audit').innerText = parseInt(document.getElementById('m-audit').innerText) + 1;
-            } catch (err) {
-                consoleEl.innerText = "// Offline / Simulation Output:\n" + JSON.stringify({
-                    dossier_id: "DOSSIER-SIM-" + Math.floor(Math.random()*10000),
-                    system: "timi-stemi-risk-score",
-                    domain: "Clinical & Cryptographic AI",
-                    task_id: payload.task_id,
-                    overall_urgency: payload.is_critical_flag ? "CRITICAL_STAT_PANIC" : "ELEVATED_RISK",
-                    integrity_status: "DISCORDANT_ANOMALY",
-                    alerts: [
-                        { worker: "InvariantQCWorker", alert: "Primary metric exceeds upper reference bound" },
-                        { worker: "SafetyEscalationWorker", alert: "Critical emergency interlock flag active" }
-                    ],
-                    audit_hash: "HMAC_SHA256_e83f9a72b941d6c381f9"
-                }, null, 2);
-            }
+    <footer>
+      Source: Morrow DA et al. <em>Circulation.</em> 2000;102:2031–2037.
+      <a href="https://doi.org/10.1161/01.CIR.102.17.2031" target="_blank" rel="noopener noreferrer">Original publication</a>
+      · <a href="https://timi.org/timi-risk-score-calculator-for-stemi/" target="_blank" rel="noopener noreferrer">TIMI Study Group calculator</a>.
+      This is the original TIMI STEMI score, not the TIMI UA/NSTEMI score.
+    </footer>
+  </main>
+  <script type="module">
+    import { calculateTimi } from "./score.js";
+    const form = document.getElementById("score-form");
+    const status = document.getElementById("status");
+    const results = document.getElementById("results");
+    const names = {
+      age: "Age", diabetes_hypertension_angina: "Diabetes / hypertension / angina",
+      systolic_bp: "Systolic BP < 100 mm Hg", heart_rate: "Heart rate > 100/min",
+      killip_class: "Killip class II–IV", weight_kg: "Weight < 67 kg",
+      anterior_st_elevation_or_lbbb: "Anterior ST elevation / LBBB",
+      time_to_treatment_hours: "Treatment time > 4 hours",
+    };
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      try {
+        const formData = new FormData(form);
+        const inputs = {};
+        for (const [key, value] of formData.entries()) {
+          if (key === "diabetes_hypertension_angina" || key === "anterior_st_elevation_or_lbbb") {
+            inputs[key] = value === "true";
+          } else {
+            if (value.trim() === "") throw new Error(key + " is required.");
+            inputs[key] = Number(value);
+          }
         }
-    </script>
+        const calculated = calculateTimi(inputs);
+        document.getElementById("score").textContent = String(calculated.score);
+        document.getElementById("mortality").textContent = calculated.mortality_30_day_percent.toFixed(1) + "%";
+        const breakdown = document.getElementById("breakdown");
+        breakdown.replaceChildren();
+        for (const [key, value] of Object.entries(calculated.points)) {
+          const row = document.createElement("div");
+          const label = document.createElement("dt");
+          const pointCount = document.createElement("dd");
+          label.textContent = names[key];
+          pointCount.textContent = "+" + value;
+          row.append(label, pointCount);
+          breakdown.append(row);
+        }
+        status.textContent = "Calculated from the eight entered predictors.";
+        status.classList.remove("error");
+        results.hidden = false;
+      } catch (error) {
+        results.hidden = true;
+        status.textContent = error.message;
+        status.classList.add("error");
+      }
+    });
+    form.addEventListener("reset", () => {
+      results.hidden = true;
+      status.textContent = "Calculate using the values on the left.";
+      status.classList.remove("error");
+    });
+  </script>
 </body>
 </html>
