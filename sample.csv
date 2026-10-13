@@ -1,4 +1,4 @@
-Patient_ID,v1,v2,v3
-PT-101,14.5,4.2,1.8
-PT-102,8.0,2.1,0.5
-PT-103,28.4,12.0,5.5
+study_id,age,diabetes_hypertension_angina,systolic_bp,heart_rate,killip_class,weight_kg,anterior_st_elevation_or_lbbb,time_to_treatment_hours
+DEMO-001,60,no,120,80,1,80,no,2
+DEMO-002,68,yes,95,110,2,65,yes,5
+DEMO-003,75,no,90,95,1,70,no,4
