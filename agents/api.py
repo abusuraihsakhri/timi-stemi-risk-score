@@ -3,7 +3,9 @@ FastAPI REST API Server for Timi Stemi Risk Score.
 """
 from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+from timi_stemi import calculate_metrics
 from .base import AuditLogger, PHIGuard
 from .models import SystemTaskPayload, ConsensusDossier
 from .supervisor import SystemSupervisor
@@ -19,6 +21,23 @@ app = FastAPI(
 
 class ChatRequest(BaseModel):
     query: str
+
+
+class TimiStemiRequest(BaseModel):
+    age: int = Field(ge=0, le=120)
+    diabetes_hypertension_angina: bool
+    systolic_bp: float = Field(gt=0, le=400, allow_inf_nan=False)
+    heart_rate: float = Field(gt=0, le=350, allow_inf_nan=False)
+    killip_class: int = Field(ge=1, le=4)
+    weight_kg: float = Field(gt=0, le=500, allow_inf_nan=False)
+    anterior_st_elevation_or_lbbb: bool
+    time_to_treatment_hours: float = Field(ge=0, le=1000, allow_inf_nan=False)
+
+
+@app.post("/api/timi-stemi", tags=["Clinical score"])
+def api_timi_stemi(payload: TimiStemiRequest):
+    """Calculate the published 0–14 point TIMI STEMI score."""
+    return calculate_metrics(**payload.model_dump())
 
 
 @app.get("/health")
@@ -53,3 +72,7 @@ def api_chat(req: ChatRequest):
 @app.get("/api/audit/logs")
 def api_audit_logs():
     return {"audit_trail": AuditLogger.get_trail(), "verified": AuditLogger.verify_integrity()}
+
+
+# Keep the historical API routes above the static-files catch-all.
+app.mount("/", StaticFiles(directory="web", html=True), name="static")
