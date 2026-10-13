@@ -8,6 +8,7 @@ import sys
 from agents.models import SystemTaskPayload
 from agents.supervisor import SystemSupervisor
 from agents.base import AuditLogger
+from timi_stemi import _boolean
 
 supervisor = SystemSupervisor(model_provider="mock")
 
