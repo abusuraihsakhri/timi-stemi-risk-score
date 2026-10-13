@@ -1,150 +1,198 @@
 #!/usr/bin/env python3
-"""
-TIMI Risk Score for STEMI
-Calculates 30-day mortality in ST-elevation myocardial infarction from clinical variables.
+"""TIMI risk score for ST-elevation myocardial infarction (STEMI).
 
-Zero-dependency Python implementation with single and batch evaluation.
-Author: Dr. Abu Suraih Sakhri
-License: MIT
+Implements the presentation-time 0–14 point score published by Morrow et al.
+(Circulation. 2000;102:2031–2037. doi:10.1161/01.CIR.102.17.2031).
+The mortality percentages describe the original InTIME II population and are
+not individualized probabilities or treatment recommendations.
 """
 
 import argparse
 import csv
 import json
-import os
-import sys
+import math
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict
+
+PREDICTOR_COLUMNS = (
+    "age",
+    "diabetes_hypertension_angina",
+    "systolic_bp",
+    "heart_rate",
+    "killip_class",
+    "weight_kg",
+    "anterior_st_elevation_or_lbbb",
+    "time_to_treatment_hours",
+)
+
+MORTALITY_30_DAY_PERCENT = (0.8, 1.6, 2.2, 4.4, 7.3, 12.4, 16.1, 23.4, 26.8, 35.9)
 
 
-def calculate_metrics(**kwargs) -> Dict[str, Any]:
+def _number(name: str, value: Any, *, minimum: float, maximum: float) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be a number, not a boolean")
+    try:
+        number = float(value)
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise ValueError(f"{name} must be a finite number") from exc
+    if not math.isfinite(number) or not minimum <= number <= maximum:
+        raise ValueError(f"{name} must be a finite number between {minimum:g} and {maximum:g}")
+    return number
+
+
+def _integer(name: str, value: Any, *, minimum: int, maximum: int) -> int:
+    number = _number(name, value, minimum=minimum, maximum=maximum)
+    if not number.is_integer():
+        raise ValueError(f"{name} must be an integer")
+    return int(number)
+
+
+def _boolean(name: str, value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ("yes", "true", "1"):
+            return True
+        if normalized in ("no", "false", "0"):
+            return False
+    if type(value) is int and value in (0, 1):
+        return bool(value)
+    raise ValueError(f"{name} must be yes/no, true/false, or 1/0")
+
+
+def calculate_metrics(
+    *,
+    age: int,
+    diabetes_hypertension_angina: bool,
+    systolic_bp: float,
+    heart_rate: float,
+    killip_class: int,
+    weight_kg: float,
+    anterior_st_elevation_or_lbbb: bool,
+    time_to_treatment_hours: float,
+) -> Dict[str, Any]:
+    """Calculate original TIMI STEMI points and observed 30-day mortality.
+
+    All eight inputs are required; a missing predictor is never assumed absent.
+    The history variable is one point if *any* of diabetes, hypertension or
+    prior angina is present, not one point per condition.
     """
-    Core domain algorithm for timi-stemi-risk-score.
-    """
-    params = {}
-    for k, v in kwargs.items():
-        if v is not None:
-            try:
-                params[k] = float(v)
-            except (ValueError, TypeError):
-                params[k] = str(v)
+    age = _integer("age", age, minimum=0, maximum=120)
+    systolic_bp = _number("systolic_bp", systolic_bp, minimum=1, maximum=400)
+    heart_rate = _number("heart_rate", heart_rate, minimum=1, maximum=350)
+    killip_class = _integer("killip_class", killip_class, minimum=1, maximum=4)
+    weight_kg = _number("weight_kg", weight_kg, minimum=1, maximum=500)
+    time_to_treatment_hours = _number(
+        "time_to_treatment_hours", time_to_treatment_hours, minimum=0, maximum=1000
+    )
+    history = _boolean("diabetes_hypertension_angina", diabetes_hypertension_angina)
+    anterior = _boolean("anterior_st_elevation_or_lbbb", anterior_st_elevation_or_lbbb)
 
-    # Deterministic domain logic
-    numeric_vals = [val for val in params.values() if isinstance(val, (int, float))]
-    primary_val = numeric_vals[0] if numeric_vals else 1.0
-
-    score = primary_val
-    for idx, nv in enumerate(numeric_vals[1:], start=2):
-        score += nv * (1.0 / idx)
-
-    rounded_score = round(score, 2)
-    
-    # Classification / tiering
-    if rounded_score < 10.0:
-        tier = "Low / Standard"
-        action = "Standard monitoring or negative cutoff"
-    elif rounded_score < 25.0:
-        tier = "Moderate / Intermediate"
-        action = "Close observation or secondary evaluation"
-    else:
-        tier = "High / Severe"
-        action = "Urgent clinical intervention or primary positive finding"
-
+    points = {
+        "age": 3 if age >= 75 else 2 if age >= 65 else 0,
+        "diabetes_hypertension_angina": int(history),
+        "systolic_bp": 3 if systolic_bp < 100 else 0,
+        "heart_rate": 2 if heart_rate > 100 else 0,
+        "killip_class": 2 if killip_class >= 2 else 0,
+        "weight_kg": 1 if weight_kg < 67 else 0,
+        "anterior_st_elevation_or_lbbb": int(anterior),
+        "time_to_treatment_hours": 1 if time_to_treatment_hours > 4 else 0,
+    }
+    score = sum(points.values())
     return {
         "tool": "timi-stemi-risk-score",
-        "score": rounded_score,
-        "classification": tier,
-        "clinical_recommendation": action,
-        "inputs_evaluated": len(params),
+        "score": score,
+        "score_max": 14,
+        "mortality_30_day_percent": MORTALITY_30_DAY_PERCENT[min(score, 9)],
+        "endpoint": "All-cause mortality at 30 days (original InTIME II cohort)",
+        "points": points,
+        "disclaimer": "Historical cohort estimate only; not a treatment or triage rule.",
     }
 
 
-def process_single(args) -> None:
-    kwargs = vars(args)
-    kwargs.pop("func", None)
-    res = calculate_metrics(**kwargs)
-    print(json.dumps(res, indent=2))
-
-
-def _validate_safe_path(path_str: str, must_exist: bool = False) -> Path:
-    """Validate that a file path is safe (no path traversal) and optionally exists."""
-    path = Path(path_str).resolve()
-    if must_exist and not path.exists():
-        raise FileNotFoundError(f"Input file not found: {path_str}")
-    if must_exist and not path.is_file():
-        raise ValueError(f"Path is not a file: {path_str}")
-    # Prevent path traversal - ensure resolved path is within cwd or is absolute
-    try:
-        path.relative_to(Path.cwd().resolve())
-    except ValueError:
-        # Allow absolute paths that don't traverse upward suspiciously
-        normalized = os.path.normpath(path_str)
-        if ".." in normalized.split(os.sep):
-            raise ValueError(f"Path traversal detected in: {path_str}")
-    return path
+def _csv_row_inputs(row: Dict[str, str]) -> Dict[str, Any]:
+    missing = [name for name in PREDICTOR_COLUMNS if row.get(name) is None or not str(row[name]).strip()]
+    if missing:
+        raise ValueError("missing required field(s): " + ", ".join(missing))
+    return {key: row[key] for key in PREDICTOR_COLUMNS}
 
 
 def process_batch(input_csv: str, output_csv: str) -> None:
-    input_path = _validate_safe_path(input_csv, must_exist=True)
-    output_path = _validate_safe_path(output_csv, must_exist=False)
-
+    """Validate the complete input before writing a CSV with calculated results."""
+    input_path, output_path = Path(input_csv).resolve(), Path(output_csv).resolve()
+    if input_path == output_path:
+        raise ValueError("Input and output files must differ")
+    if not input_path.is_file():
+        raise FileNotFoundError(f"Input CSV not found: {input_csv}")
     if input_path.stat().st_size == 0:
-        raise ValueError(f"Input CSV file is empty: {input_csv}")
+        raise ValueError("Input CSV is empty")
 
-    with open(input_path, mode="r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        fieldnames = list(reader.fieldnames or [])
+    with input_path.open(newline="", encoding="utf-8-sig") as source:
+        reader = csv.DictReader(source)
+        fieldnames = list(reader.fieldnames or ())
         if not fieldnames:
-            raise ValueError(f"Input CSV has no headers: {input_csv}")
+            raise ValueError("Input CSV has no headers")
+        if len(fieldnames) != len(set(fieldnames)):
+            raise ValueError("Input CSV contains duplicate headers")
         rows = list(reader)
 
     if not rows:
-        raise ValueError(f"Input CSV has headers but no data rows: {input_csv}")
+        raise ValueError("Input CSV has headers but no data rows")
+    result_columns = ("score", "mortality_30_day_percent")
+    if any(field in fieldnames for field in result_columns):
+        raise ValueError("Input CSV already contains result columns")
 
-    out_fields = fieldnames + ["score", "classification", "clinical_recommendation"]
-    out_rows = []
+    results = []
+    for row_number, row in enumerate(rows, start=2):
+        if None in row:
+            raise ValueError(f"CSV row {row_number}: unexpected extra columns")
+        try:
+            calculated = calculate_metrics(**_csv_row_inputs(row))
+        except ValueError as exc:
+            raise ValueError(f"CSV row {row_number}: {exc}") from exc
+        # Prevent spreadsheet formula execution in user-supplied text columns.
+        safe_row = {
+            key: ("'" + value if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@"))
+                  and key not in PREDICTOR_COLUMNS else value)
+            for key, value in row.items()
+        }
+        safe_row.update({name: calculated[name] for name in result_columns})
+        results.append(safe_row)
 
-    for r in rows:
-        calc_res = calculate_metrics(**r)
-        row_dict = dict(r)
-        row_dict["score"] = calc_res["score"]
-        row_dict["classification"] = calc_res["classification"]
-        row_dict["clinical_recommendation"] = calc_res["clinical_recommendation"]
-        out_rows.append(row_dict)
-
-    # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, mode="w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=out_fields)
+    with output_path.open("w", newline="", encoding="utf-8") as destination:
+        writer = csv.DictWriter(destination, fieldnames=fieldnames + list(result_columns))
         writer.writeheader()
-        writer.writerows(out_rows)
-
-    print(f"Processed {len(out_rows)} records -> {output_csv}")
+        writer.writerows(results)
+    print(f"Processed {len(results)} records -> {output_path}")
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="TIMI Risk Score for STEMI")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # Single parser
-    single_parser = subparsers.add_parser("single", help="Evaluate single case")
-    single_parser.add_argument("--v1", type=float, default=10.0, help="Primary parameter")
-    single_parser.add_argument("--v2", type=float, default=5.0, help="Secondary parameter")
-    single_parser.add_argument("--v3", type=float, default=2.0, help="Tertiary parameter")
-    single_parser.set_defaults(func=process_single)
-
-    # Batch parser
-    batch_parser = subparsers.add_parser("batch", help="Process batch CSV")
-    batch_parser.add_argument("-i", "--input", required=True, help="Input CSV")
-    batch_parser.add_argument("-o", "--output", default="results.csv", help="Output CSV")
-
+    parser = argparse.ArgumentParser(description="Original TIMI STEMI 30-day mortality score")
+    commands = parser.add_subparsers(dest="command", required=True)
+    single = commands.add_parser("single", help="Calculate one complete STEMI presentation")
+    single.add_argument("--age", type=int, required=True)
+    single.add_argument("--dm-htn-angina", action="store_true", dest="diabetes_hypertension_angina")
+    single.add_argument("--sbp", type=float, required=True, dest="systolic_bp")
+    single.add_argument("--heart-rate", type=float, required=True, dest="heart_rate")
+    single.add_argument("--killip", type=int, required=True, dest="killip_class")
+    single.add_argument("--weight", type=float, required=True, dest="weight_kg")
+    single.add_argument("--anterior-or-lbbb", action="store_true", dest="anterior_st_elevation_or_lbbb")
+    single.add_argument("--time-to-treatment", type=float, required=True, dest="time_to_treatment_hours")
+    batch = commands.add_parser("batch", help="Score CSV rows with named predictor columns")
+    batch.add_argument("-i", "--input", required=True)
+    batch.add_argument("-o", "--output", default="results.csv")
     args = parser.parse_args(argv)
-
-    if args.command == "single":
-        args.func(args)
-    elif args.command == "batch":
-        process_batch(args.input, args.output)
+    try:
+        if args.command == "single":
+            values = vars(args).copy()
+            values.pop("command")
+            print(json.dumps(calculate_metrics(**values), indent=2))
+        else:
+            process_batch(args.input, args.output)
+    except (ValueError, OSError) as exc:
+        parser.error(str(exc))
 
 
 if __name__ == "__main__":
