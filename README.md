@@ -6,7 +6,7 @@ A reproducible implementation of the **original TIMI STEMI presentation-time sco
 
 ## Application
 
-The standalone browser calculator is in [web/index.html](web/index.html). It uses ordinary JavaScript: no Python runtime, account, external API, or patient-data transmission is required. The GitHub Pages workflow publishes static files from the web directory; consult repository **Actions → Deploy clinical calculator to GitHub Pages** for deployment status.
+The standalone browser calculator is in [web/index.html](web/index.html). It uses ordinary JavaScript: no Python runtime, account, external API, or transmission of entered patient data is required. The GitHub Pages workflow publishes static files from the web directory; consult repository **Actions → Deploy clinical calculator to GitHub Pages** for deployment status.
 
 ## Variables (original TIMI STEMI score)
 
